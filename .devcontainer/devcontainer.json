@@ -1,0 +1,4 @@
+{
+  "name": "Go Example",
+  "image": "mcr.microsoft.com/devcontainers/go:1.24"
+}
