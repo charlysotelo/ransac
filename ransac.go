@@ -14,19 +14,25 @@ import (
 	"github.com/charlysotelo/ransac/internal"
 )
 
+// Model is RANSAC's interface to your model implementation
+// The type parameter R is your number type for your model (typically float64)
 type Model[R internal.Number] interface {
 	MinimalFitpoints() uint // Minimal number of points needed to fit the model (e.g. 2 for line)
 	Fit([][]R)              // Modifies internal state of model
 	IsInlier([]R) bool      // Returns true if the point is an inlier
 }
 
-type Copyer[T any] interface {
+// See CopyableModel
+type Copier[T any] interface {
 	Copy() T
 }
 
+// CopyableModel represents a Model with a Copy() method. Since this
+// RASNAC implementation modifies the internal state of a Model when it is fitted,
+// each goroutine requires its own distinct model copy
 type CopyableModel[R internal.Number, M Model[R]] interface {
 	Model[R]
-	Copyer[M]
+	Copier[M]
 }
 
 type terminationCondition int
@@ -234,7 +240,7 @@ func (p *problem[R, M]) validateParams() error {
 	return nil
 }
 
-// func ModelFit[R internal.Number](data [][]R, model Model[R], options ...any) error {
+// ModelFit fits the model to the supplied data using RANSAC
 func ModelFit[R internal.Number, M Model[R]](data [][]R, model M, options ...any) error {
 	p := &problem[R, M]{}
 	p.minInliers = model.MinimalFitpoints()
