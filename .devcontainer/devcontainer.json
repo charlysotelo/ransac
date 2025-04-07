@@ -1,4 +1,12 @@
 {
-  "name": "Go Example",
-  "image": "mcr.microsoft.com/devcontainers/go:1.24"
+  "name": "Go Development",
+  "image": "golang:latest",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+	"github.copilot"
+      ]
+    }
+  }
 }
