@@ -2,6 +2,7 @@ package ransac
 
 import (
 	"iter"
+	"math/rand"
 	"time"
 
 	"github.com/charlysotelo/ransac/internal"
@@ -23,8 +24,10 @@ func WithTimeout(d time.Duration) func(*pNonGenericFields) {
 	}
 }
 
-// WithExhaustedIterations places no iteration limit on RANSAC 
-func WithExhaustedIterations() func(*pNonGenericFields) {
+// WithNoMaxIterations places no iteration limit on RANSAC
+// In practice this means you must specify another termination condition
+// such as WithTimeout
+func WithNoMaxIterations() func(*pNonGenericFields) {
 	return func(p *pNonGenericFields) {
 		p.terminationCondition = p.terminationCondition &^ MaxIterations
 	}
@@ -32,7 +35,8 @@ func WithExhaustedIterations() func(*pNonGenericFields) {
 
 // WithChooser sets the chooser function to be used for selecting random subsets of points
 // The chooser function should yield combinations of indices for the points
-func WithChooser(chooser iter.Seq[[]uint]) func(*pNonGenericFields) {
+// by default this uses the randomGonumChooser function
+func WithChooser(chooser iter.Seq[[]int]) func(*pNonGenericFields) {
 	return func(p *pNonGenericFields) {
 		p.chooser = chooser
 	}
@@ -43,6 +47,22 @@ func WithChooser(chooser iter.Seq[[]uint]) func(*pNonGenericFields) {
 func WithNumberOfWorkers(n uint) func(*pNonGenericFields) {
 	return func(p *pNonGenericFields) {
 		p.numberOfWorkers = n
+	}
+}
+
+// WithNoConsensusSetFit enable or disables the consensus set fit typically done
+// after the best model is found. This is enabled by default
+func WithConsensusSetFit(doConsensusSetFit bool) func(*pNonGenericFields) {
+	return func(p *pNonGenericFields) {
+		p.doConsensusSetFit = doConsensusSetFit
+	}
+}
+
+// WithRand sets the random number generator to be used for selecting random subsets of points
+// This is useful for testing purposes
+func WithRand(r *rand.Rand) func(*pNonGenericFields) {
+	return func(p *pNonGenericFields) {
+		p.localRand = r
 	}
 }
 

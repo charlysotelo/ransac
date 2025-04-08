@@ -2,28 +2,28 @@ package ransac
 
 import (
 	"iter"
+	"math/rand"
+
+	"gonum.org/v1/gonum/stat/combin"
 )
 
-func defaultChooser(N, K uint) iter.Seq[[]uint] {
-	// Generate all combinations of N choose K
-	return func(yield func([]uint) bool) {
-		comb := make([]uint, K)
-		var generate func(int, int) bool
-		generate = func(start, depth int) bool {
-			if depth == int(K) {
-				// Yield a copy of the current combination
-				combCopy := make([]uint, K)
-				copy(combCopy, comb)
-				return yield(combCopy)
+func defaultChooser(N, K uint) iter.Seq[[]int] {
+	return RandomGonumChooser(N, K)
+}
+
+// RandomGonumChooser generates random combinations of N choose K
+// using gonum's combin.IndexToCombination function with a random index
+// Note that it may yield the same combination multiple times
+func RandomGonumChooser(N, K uint) iter.Seq[[]int] {
+	return func(yield func([]int) bool) {
+		for {
+
+			result := make([]int, K)
+			combin.IndexToCombination(result, rand.Intn(int(N)), int(N), int(K))
+
+			if !yield(result) {
+				return
 			}
-			for i := start; i <= int(N)-int(K)+depth; i++ {
-				comb[depth] = uint(i)
-				if !generate(i+1, depth+1) {
-					return false
-				}
-			}
-			return true
 		}
-		generate(0, 0)
 	}
 }
