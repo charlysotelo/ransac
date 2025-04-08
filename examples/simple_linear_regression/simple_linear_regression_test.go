@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charlysotelo/ransac"
+	"github.com/charlysotelo/ransac/internal"
 )
 
 func ExampleLinearRegressionModel_ransac() {
@@ -23,10 +24,15 @@ func ExampleLinearRegressionModel_ransac() {
 	// Fit the model to the data points
 	ransac.ModelFit(points, model,
 		// Optional: Customize the RANSAC algorithm parameters
-		ransac.WithMaxIterations(1000),
-		// ransac.WithExhaustedIterations(),
+		// ransac.WithMaxIterations(1000),
 		// ransac.WithTimeout(5 * time.Second),
 		// ransac.WithNumberOfWorkers(4),
+		// ransac.WithConsensusSetFit(true),
+		// ransac.WithRand(...),
+		// ... see options.go for more options
+		//
+		// This chooser was chosen for deterministic behavior during testing
+		ransac.WithChooser(internal.OrderedChooser(uint(len(points)), model.MinimalFitpoints())),
 	)
 
 	// At this point your model is fitted to the data points

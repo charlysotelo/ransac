@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"math/rand"
 	"runtime"
 	"sync"
 	"time"
@@ -54,8 +55,10 @@ type (
 		maxIterations        uint                 // Maximum number of iterations
 		minInliers           uint                 // Minimum number of inliers to accept the model
 		timeLimit            time.Duration        // Time limit for the algorithm
-		chooser              iter.Seq[[]uint]     // Chooses a random subset of points // TODO: make it an interator function
+		chooser              iter.Seq[[]int]      // Chooses a random subset of points
 		numberOfWorkers      uint                 // Number of workers to use for parallel processing
+		doConsensusSetFit    bool                 // Whether to fit the model to the consensus set
+		localRand            *rand.Rand           // useful for overrides in tests
 	}
 
 	pGenericFields[R internal.Number, M Model[R]] struct {
@@ -75,7 +78,7 @@ func (p *problem[R, M]) shouldTerminate(iterationCount uint) bool {
 	return false
 }
 
-func selectSubset[R internal.Number](set [][]R, subset [][]R, indeces []uint) {
+func selectSubset[R internal.Number](set [][]R, subset [][]R, indeces []int) {
 	i := 0
 	for _, index := range indeces {
 		subset[i] = set[index]
@@ -84,11 +87,11 @@ func selectSubset[R internal.Number](set [][]R, subset [][]R, indeces []uint) {
 }
 
 type workerResult struct {
-	indeces []uint
+	indeces []int
 	score   uint
 }
 
-func (p *problem[R, M]) worker(model Model[R], jobs <-chan []uint, results chan<- workerResult, ctx context.Context, wg *sync.WaitGroup) {
+func (p *problem[R, M]) worker(model Model[R], jobs <-chan []int, results chan<- workerResult, ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var result workerResult
 	// Pre-allocate memory for hypothetical inliers
@@ -108,7 +111,7 @@ func (p *problem[R, M]) worker(model Model[R], jobs <-chan []uint, results chan<
 		default:
 		}
 
-		var indeces []uint
+		var indeces []int
 		var ok bool
 		select {
 		case <-ctx.Done():
@@ -144,7 +147,7 @@ func (p *problem[R, M]) worker(model Model[R], jobs <-chan []uint, results chan<
 
 func (p *problem[R, M]) modelFit(model CopyableModel[R, M]) error {
 	// Create worker pool
-	jobs := make(chan []uint, p.numberOfWorkers)
+	jobs := make(chan []int, p.numberOfWorkers)
 	results := make(chan workerResult, p.numberOfWorkers)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -173,7 +176,7 @@ func (p *problem[R, M]) modelFit(model CopyableModel[R, M]) error {
 	close(results)
 
 	// Gather best result
-	var bestHypothesisIndeces []uint
+	var bestHypothesisIndeces []int
 	bestHypothesisScore := uint(0)
 	for result := range results {
 		if result.score > bestHypothesisScore {
@@ -190,7 +193,11 @@ func (p *problem[R, M]) modelFit(model CopyableModel[R, M]) error {
 	selectSubset(p.data, bestHypothesis, bestHypothesisIndeces)
 	model.Fit(bestHypothesis)
 
-	// Collect all inliers
+	if !p.doConsensusSetFit {
+		return nil
+	}
+
+	// Collect the consensus set
 	consensusSet := make([][]R, 0, bestHypothesisScore)
 	for _, point := range p.data {
 		if model.IsInlier(point) {
@@ -240,15 +247,29 @@ func (p *problem[R, M]) validateParams() error {
 	return nil
 }
 
-// ModelFit fits the model to the supplied data using RANSAC
-func ModelFit[R internal.Number, M Model[R]](data [][]R, model M, options ...any) error {
+var pkgRand *rand.Rand
+
+func init() {
+	pkgRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+func getDefaultProblem[R internal.Number, M Model[R]](data [][]R, model M) *problem[R, M] {
 	p := &problem[R, M]{}
-	p.minInliers = model.MinimalFitpoints()
 	p.terminationCondition = MaxIterations
+	p.maxIterations = 1000
+	p.minInliers = model.MinimalFitpoints()
 	p.numberOfWorkers = uint(runtime.GOMAXPROCS(0))
 	p.chooser = defaultChooser(uint(len(data)), p.minInliers)
 	p.data = data
 	p.model = model
+	p.doConsensusSetFit = true
+	p.localRand = pkgRand
+	return p
+}
+
+// ModelFit fits the model to the supplied data using RANSAC
+func ModelFit[R internal.Number, M Model[R]](data [][]R, model M, options ...any) error {
+	p := getDefaultProblem(data, model)
 	applyOptions(p, options...)
 
 	if err := p.validateParams(); err != nil {

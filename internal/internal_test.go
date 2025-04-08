@@ -1,31 +1,31 @@
-package ransac
+package internal
 
 import (
 	"testing"
 )
 
-func TestDefaultChooser(t *testing.T) {
+func TestOrderedChooser(t *testing.T) {
 	// Test case 1: Basic functionality
 	N := uint(5)
 	const K uint = uint(3)
-	expectedCombinations := map[[K]uint]struct{}{
-		[K]uint{0, 1, 2}: {},
-		[K]uint{0, 1, 3}: {},
-		[K]uint{0, 1, 4}: {},
-		[K]uint{0, 2, 3}: {},
-		[K]uint{0, 2, 4}: {},
-		[K]uint{0, 3, 4}: {},
-		[K]uint{1, 2, 3}: {},
-		[K]uint{1, 2, 4}: {},
-		[K]uint{1, 3, 4}: {},
-		[K]uint{2, 3, 4}: {},
+	expectedCombinations := map[[K]int]struct{}{
+		{0, 1, 2}: {},
+		{0, 1, 3}: {},
+		{0, 1, 4}: {},
+		{0, 2, 3}: {},
+		{0, 2, 4}: {},
+		{0, 3, 4}: {},
+		{1, 2, 3}: {},
+		{1, 2, 4}: {},
+		{1, 3, 4}: {},
+		{2, 3, 4}: {},
 	}
 
 	expectedCombinationsCount := len(expectedCombinations)
 	indecesCount := 0
-	for indeces := range defaultChooser(N, K) {
+	for indeces := range OrderedChooser(N, K) {
 		indecesCount++
-		asArray := [K]uint{}
+		asArray := [K]int{}
 		copy(asArray[:], indeces)
 		if _, ok := expectedCombinations[asArray]; !ok {
 			t.Errorf("Unexpected combination: %v", indeces)

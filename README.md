@@ -5,7 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/charlysotelo/ransac)](https://goreportcard.com/report/github.com/charlysotelo/ransac)
 
 
-This is a golang implementation of [RANSAC](https://en.wikipedia.org/wiki/Random_sample_consensus). At a minimum, you provide a model which implements the `Model` interface. See [simple_linear_regression.go](examples/simple_linear_regression/simple_linear_regression.go) for an example implementation
+This is a golang implementation of [RANSAC](https://en.wikipedia.org/wiki/Random_sample_consensus). At a minimum, you provide a model which implements the `Model` interface. See [simple_linear_regression.go](examples/simple_linear_regression/simple_linear_regression.go) for an example implementation and [simple_linear_regression_test.go](examples/simple_linear_regression/simple_linear_regression_test.go) for its usage
 
 ## Usage
 ```go
@@ -20,16 +20,24 @@ func ExampleLinearRegressionModel_ransac() {
 		{-37, 43},
 	}
 
-	// Create a new LinearRegressionModel with a threshold of 0.5
+	// Create a new LinearRegressionModel, which is an implementation of ransac.Model,
+	// with a threshold of 0.5
+	// note you provide an implementation of Model -- NewLinearRegressionModel
+	// is provided by this module for demonstration purposes
 	model := NewLinearRegressionModel(0.5)
 
 	// Fit the model to the data points
 	ransac.ModelFit(points, model,
-		// Optional: Customize the RANSAC algorithm parameters. See options.go for more
-		ransac.WithMaxIterations(1000),
-		// ransac.WithExhaustedIterations(),
+		// Optional: Customize the RANSAC algorithm parameters
+		// ransac.WithMaxIterations(1000),
 		// ransac.WithTimeout(5 * time.Second),
 		// ransac.WithNumberOfWorkers(4),
+		// ransac.WithConsensusSetFit(true),
+		// ransac.WithRand(...),
+		// ... see options.go for more options
+		//
+		// This chooser was chosen for deterministic behavior during testing
+		ransac.WithChooser(internal.OrderedChooser(uint(len(points)), model.MinimalFitpoints())),
 	)
 
 	// At this point your model is fitted to the data points
