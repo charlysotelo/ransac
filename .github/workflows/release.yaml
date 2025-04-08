@@ -1,13 +1,16 @@
 name: Semantic Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["tests"] # Only run after tests completed 
+    types:
+      - completed
     branches:
       - main
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
