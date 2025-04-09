@@ -1,6 +1,6 @@
 {
   "name": "Go Development",
-  "image": "golang:latest",
+  "image": "mcr.microsoft.com/devcontainers/go:latest",
   "customizations": {
     "vscode": {
       "extensions": [
