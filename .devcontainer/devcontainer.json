@@ -1,6 +1,7 @@
 {
   "name": "Go Development",
   "image": "mcr.microsoft.com/devcontainers/go:latest",
+  "forwardPorts": [4000],
   "customizations": {
     "vscode": {
       "extensions": [
