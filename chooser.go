@@ -15,6 +15,9 @@ func defaultChooser(N, K uint) iter.Seq[[]int] {
 // using gonum's combin.IndexToCombination function with a random index
 // Note that it may yield the same combination multiple times
 func RandomGonumChooser(N, K uint) iter.Seq[[]int] {
+	if K > N {
+		panic("K cannot be greater than N")
+	}
 	return func(yield func([]int) bool) {
 		for {
 

@@ -72,17 +72,16 @@ func (p *problem[R, M]) shouldTerminate(iterationCount uint) bool {
 		return false
 	}
 
-	if iterationCount < p.maxIterations {
-		return true
-	}
-	return false
+	return iterationCount >= p.maxIterations
 }
 
 func selectSubset[R internal.Number](set [][]R, subset [][]R, indeces []int) {
 	i := 0
 	for _, index := range indeces {
-		subset[i] = set[index]
-		i++
+		if index >= 0 && index < len(set) {
+			subset[i] = set[index]
+			i++
+		}
 	}
 }
 
@@ -94,6 +93,17 @@ type workerResult struct {
 func (p *problem[R, M]) worker(model Model[R], jobs <-chan []int, results chan<- workerResult, ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var result workerResult
+
+	// Validate data before proceeding
+	if len(p.data) == 0 {
+		results <- result
+		return
+	}
+	if len(p.data[0]) == 0 {
+		results <- result
+		return
+	}
+
 	// Pre-allocate memory for hypothetical inliers
 	hypotheticalInliers := make([][]R, model.MinimalFitpoints())
 	for i := range hypotheticalInliers {
@@ -140,7 +150,8 @@ func (p *problem[R, M]) worker(model Model[R], jobs <-chan []int, results chan<-
 		// Keep track of the best hypothesis
 		if consensus >= result.score {
 			result.score = consensus
-			result.indeces = indeces
+			result.indeces = make([]int, len(indeces))
+			copy(result.indeces, indeces)
 		}
 	}
 }
@@ -181,7 +192,8 @@ func (p *problem[R, M]) modelFit(model CopyableModel[R, M]) error {
 	for result := range results {
 		if result.score > bestHypothesisScore {
 			bestHypothesisScore = result.score
-			bestHypothesisIndeces = result.indeces
+			bestHypothesisIndeces = make([]int, len(result.indeces))
+			copy(bestHypothesisIndeces, result.indeces)
 		}
 	}
 
@@ -241,7 +253,7 @@ func (p *problem[R, M]) validateParams() error {
 	if p.numberOfWorkers == 0 {
 		return ErrNumWorkersZero
 	}
-	if p.terminationCondition == MaxIterations && p.maxIterations == 0 {
+	if p.terminationCondition&MaxIterations != 0 && p.maxIterations == 0 {
 		return ErrMaxIterationsZero
 	}
 	return nil
