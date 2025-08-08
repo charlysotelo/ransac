@@ -16,7 +16,7 @@ func WithMaxIterations(n uint) func(*pNonGenericFields) {
 	}
 }
 
-// WithMaxIterations limits RANSAC to run only up to duration d
+// WithTimeout limits RANSAC to run only up to duration d
 func WithTimeout(d time.Duration) func(*pNonGenericFields) {
 	return func(p *pNonGenericFields) {
 		p.terminationCondition |= TimeLimit
